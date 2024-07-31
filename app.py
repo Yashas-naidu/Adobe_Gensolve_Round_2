@@ -116,17 +116,35 @@ def detect_symmetry(contours):
         m, c = line_params
         distances = np.abs(m * points[:, 0] - points[:, 1] + c) / np.sqrt(m ** 2 + 1)
         return np.mean(distances)
-    
+
     symmetric_lines = []
     for contour in contours:
         points = np.array(contour).reshape(-1, 2)
         if len(points) < 2:
             continue
-        m, c = fit_line(points)
-        score = compute_symmetry_score((m, c), points)
-        if score < 10:  # Arbitrary threshold for symmetry
-            symmetric_lines.append((m, c))
-    
+
+        # Check for horizontal, vertical, and diagonal symmetry
+        # 1. Horizontal Symmetry
+        m_horizontal, c_horizontal = fit_line(points)
+        score_horizontal = compute_symmetry_score((m_horizontal, c_horizontal), points)
+        if score_horizontal < 10:  # Adjust threshold if needed
+            symmetric_lines.append(("Horizontal", (m_horizontal, c_horizontal)))
+
+        # 2. Vertical Symmetry
+        m_vertical, c_vertical = fit_line(np.flip(points, axis=1))  # Flip points along the y-axis
+        score_vertical = compute_symmetry_score((m_vertical, c_vertical), np.flip(points, axis=1))
+        if score_vertical < 10:
+            symmetric_lines.append(("Vertical", (m_vertical, c_vertical)))
+
+        # 3. Diagonal Symmetry (45-degree angle)
+        m_diagonal, c_diagonal = fit_line(points)
+        # Calculate the angle of the diagonal line
+        angle = math.degrees(math.atan(m_diagonal))
+        if abs(angle - 45) < 5:  # Adjust the tolerance (5 degrees) if needed
+            score_diagonal = compute_symmetry_score((m_diagonal, c_diagonal), points)
+            if score_diagonal < 10:
+                symmetric_lines.append(("Diagonal", (m_diagonal, c_diagonal)))
+
     return symmetric_lines
 
 # Function to process symmetry detection
@@ -154,8 +172,8 @@ def symmetry_detection_page():
 
         # Display symmetric lines
         st.write(f"Detected {len(symmetric_lines)} lines of symmetry")
-        for i, (m, c) in enumerate(symmetric_lines):
-            st.write(f"Symmetric Line {i + 1}: y = {m:.2f}x + {c:.2f}")
+        for i, (line_type, (m, c)) in enumerate(symmetric_lines):
+            st.write(f"Symmetric Line {i + 1}: {line_type} (y = {m:.2f}x + {c:.2f})")
 
 # Function to process occlusion completion
 def occlusion_completion_page():
